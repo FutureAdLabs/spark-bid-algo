@@ -448,8 +448,8 @@ class adconfig():
         if self.verbose>-1:
             if df.count()>dfclean.count():
                 print("-"*10,f'WARNNING: Dropping missing rows with any missing values',"-"*10)
-                print('DataFrame rows before dropna: ',df.shape[0])
-                print('DataFrame rows after dropna: ',dfclean.shape[0])
+                print('DataFrame rows before dropna: ',df.count())
+                print('DataFrame rows after dropna: ',dfclean.count())
 
         # Now set data types
         # df = dfclean.astype(dtype_dict)

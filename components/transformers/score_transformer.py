@@ -5,9 +5,9 @@ from os import path
 
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from spark_model.config import adconfig
-from spark_model.score import adlogdata
-from spark_components.transformers.parameters.score_parameters import *
+from model.config import adconfig
+from model.score import adlogdata
+from components.transformers.parameters.score_parameters import *
 
 import pyspark.sql.functions as f
 from pyspark import keyword_only
