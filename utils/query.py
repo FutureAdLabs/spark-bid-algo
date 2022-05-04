@@ -28,7 +28,28 @@ class ScoreQuery:
                        right_on =['brief_brand_name','brief_campaign_name'])\
         .drop_duplicates()
         
-        return df_all_cmp
+        return df2
         
-    def query(filter=None):
+    def query(self, filter=None):
+        df = mergeData().groupby(filter)
+
+        return df
+
+    def get_ids(self, df, ver):
+        # for ver in df.vertical.unique():
+        ads = list(set(df.loc[df['vertical'] == ver].advertiser_id))
+        # print(f'{ver} : {ads}')
+        
+        return ads
+
+    def get_dates(self, df, ver):
+        date_range = []
+        # for ver in df.vertical.unique():
+        start_date = list(set(df.loc[df['vertical'] == ver].start_date))
+        date_range.append(min(start_date).strftime('%Y-%m-%d'))
+        
+        end_date = list(set(df.loc[df['vertical'] == ver].end_date))
+        date_range.append(max(end_date).strftime('%Y-%m-%d'))
+        
+        return date_range
         
