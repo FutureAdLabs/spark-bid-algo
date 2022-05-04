@@ -1,7 +1,7 @@
 # imports
 from DataSources import cleanBriefData, read_data_from_csv
 
-class Query:
+class ScoreQuery:
     
     def __init__(self, **kwargs):
         self.brief_and_ttd_matched = kwargs.get('brief_and_ttd_matched')
