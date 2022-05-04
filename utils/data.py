@@ -39,6 +39,9 @@ class DataSources:
             Cleaned brief DataFrame
         """
 
+        if df is None:
+            df = self.readFromSheet() 
+             
         rename_columns = {'End Date':'end_date', 
                           'Start Date':'start_date',
                           'Brand Name':'brief_brand_name',
@@ -86,14 +89,14 @@ class DataSources:
 
         return df
     
-    def read_data_from_csv(self, data=None):
+    def readFromCSV(self, data=None):
         """Reads ttd ids and verticals matched data.
         
         Returns:
             DataFrame
 
         """
-        
+
         if data == 'brief_and_ttd_matched':
             file = 'data/matched_briefing_ttd_names.csv'
             ttd_brief_matched_df = pd.read_csv(file) 
