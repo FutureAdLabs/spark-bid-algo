@@ -29,7 +29,7 @@ class DataSources:
 
         return df
     
-    def cleanBriefData(self, df):
+    def cleanBriefData(self, df=None):
         """Changes column names, Cleans brief data.
         
         Args:
