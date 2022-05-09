@@ -126,7 +126,7 @@ class DataSources():
             rename_columns = { 'campaign_name':'ttd_campaign_name'}
             verticals_mapper = verticals_mapper.rename(columns=rename_columns)
 
-            verticals_mapper = verticals_mapper[['ttd_campaign_name', 'vertical']]
+            # verticals_mapper = verticals_mapper[['ttd_campaign_name', 'vertical']]
 
             return verticals_mapper
         
