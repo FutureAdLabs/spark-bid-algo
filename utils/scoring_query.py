@@ -1,55 +1,100 @@
 # imports
-from DataSources import cleanBriefData, read_data_from_csv
 
-class ScoreQuery:
+import pandas as pd
+
+from data import DataSources
+# cleanBriefData, read_data_from_csv
+
+class ScoringQuery(DataSources):
     
     def __init__(self, **kwargs):
-        self.brief_and_ttd_matched = kwargs.get('brief_and_ttd_matched')
-        self.ttd_name_and_ids_matched = kwargs.get('ttd_name_and_ids_matched')
-        self.verticals_mapper = kwargs.get('ttd_names_and_vertical_matched')
+        self.brief_and_ttd_matched = 'brief_and_ttd_matched'
+        self.ttd_name_and_ids_matched = 'ttd_name_and_ids_matched'
+        self.verticals_mapper = 'ttd_names_and_vertical_matched'
     
-    def mergeData(self):
-        ttd_brief_df = readFromCSV(self.brief_and_ttd_matched)
-        tdd_ids = readFromCSV(self.ttd_name_and_ids_matched)
-        verticals_mapper = readFromCSV(self.verticals_mapper)
+    def mergeData(self, **kwargs):
+        # readFromCSV = DataSources().readFromCSV()
+        ttd_brief_df = self.readFromCSV(self.brief_and_ttd_matched)
+        tdd_ids = self.readFromCSV(self.ttd_name_and_ids_matched)
+        verticals_mapper = self.readFromCSV(self.verticals_mapper)
+        self.sheetname = kwargs.get('sheetname','Sheet1')
+        self.sheetid = kwargs.get('sheetid','1Ll-PkuW5zszhfcaotdhWOF6id_ok6HaUaDwpZe4OtZA')
         
-        df1 = pd.merge(ttd_brief_df,
-                       tdd_ids,
-                       how='inner',
-                       left_on='ttd_campaign_name',
-                       right_on='ttd_campaign_name').drop_duplicates()
-        
-        brief_df = cleanBriefData()
+        df_all_cmps = pd.merge(ttd_brief_df,
+                               verticals_mapper,
+                               how='inner',
+                               left_on='ttd_campaign_name',
+                               right_on='ttd_campaign_name').drop_duplicates()
+        print(df_all_cmps.info())
 
-        df2 = pd.merge(df1, 
-                       brief_df, 
-                       how='inner', 
-                       left_on=['brief_brand_name','brief_campaign_name'], 
-                       right_on =['brief_brand_name','brief_campaign_name'])\
+        df_brief = self.cleanBriefData()
+
+        df_matched = pd.merge(df_all_cmps, 
+                              df_brief, 
+                              how='inner', 
+                              left_on=['brief_brand_name','brief_campaign_name'], 
+                              right_on =['brief_brand_name','brief_campaign_name'])\
         .drop_duplicates()
+        print(df_matched.info())
         
-        return df2
+        # df_final = pd.merge(final_df, 
+        #                     verticals_mapper, 
+        #                     how='inner', 
+        #                     left_on='ttd_campaign_name', 
+        #                     right_on='ttd_campaign_name')
         
-    def query(self, filter=None):
-        df = mergeData().groupby(filter)
-
-        return df
-
-    def getIds(self, df, ver):
-        # for ver in df.vertical.unique():
-        ads = list(set(df.loc[df['vertical'] == ver].advertiser_id))
-        # print(f'{ver} : {ads}')
+        return df_matched
         
-        return ads
-
-    def getDates(self, df, ver):
+    def getIds(self, column=None, value=None):
+        
+        df = self.mergeData()
+        
+        if column is None:
+            column = 'vertical'   
+            if value is None:
+                cmp = list(set(df.campaign_id))
+            else:
+                print('Error msg')
+            
+        else:
+            if value is None:
+                temp = df.column.unique()
+            else:
+                temp = value
+            cmp = list(set(df.loc[df[column] == temp].campaign_id))
+            
+        return cmp
+            
+    def getDateRange(self, start_date=None, end_date=None, column=None, value=None):
+        
         date_range = []
-        # for ver in df.vertical.unique():
-        start_date = list(set(df.loc[df['vertical'] == ver].start_date))
-        date_range.append(min(start_date).strftime('%Y-%m-%d'))
+        df = self.mergeData()
         
-        end_date = list(set(df.loc[df['vertical'] == ver].end_date))
-        date_range.append(max(end_date).strftime('%Y-%m-%d'))
+        if start_date is None:
+            start_date = list(set(df.loc[df[column] == value].start_date))
+            date_range.append(min(start_date).strftime('%Y-%m-%d'))
+        else:
+            try:
+                date_range.append(start_date)
+            except:
+                print(f'{start_date} is not right date format')
         
+        if end_date is None:
+            end_date = list(set(df.loc[df[column] == value].end_date))
+            date_range.append(max(end_date).strftime('%Y-%m-%d'))
+        else:
+            try:
+                date_range.append(end_date)
+            except:
+                print(f'{end_date} is not right date format')
+        
+
         return date_range
+
+if __name__ == "__main__":
+    c1 = ScoringQuery()
+    c1.getIds()
+
+ 
+            
         

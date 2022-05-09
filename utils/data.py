@@ -7,7 +7,7 @@ import pyludio.rds as dbapi
 import pyludio.ttd_api as tapi
 from pyludio.gapi import gsheet
 
-class DataSources:
+class DataSources():
     
     def __init__(self, **kwargs):
         self.sheetname = kwargs.get('sheetname','Sheet1')
@@ -130,8 +130,8 @@ class DataSources:
 
             return verticals_mapper
         
-        else:
-            df = pd.read_csv(self.csv_path)
+        # else:
+        #     df = pd.read_csv(self.csv_path)
             
-            return df
+        #     return df
     
