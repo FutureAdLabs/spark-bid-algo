@@ -38,7 +38,6 @@ class ScoringQuery(DataSources):
                               left_on=['brief_brand_name','brief_campaign_name'], 
                               right_on =['brief_brand_name','brief_campaign_name'])\
         .drop_duplicates()
-        # print(df_matched.info())
         
         # df_final = pd.merge(final_df, 
         #                     verticals_mapper, 
