@@ -94,14 +94,14 @@ class ScoringQuery(DataSources):
         id = self.getIds(df, column, value)
         date_range = self.getDateRange(df, column, value)
 
-        print(id, date_range)
+        print(column, id, date_range)
 
-        return (id, date_range)
+        return (column, id, date_range)
 
 
 if __name__ == "__main__":
     c1 = ScoringQuery()
-    c1.getFilters()
+    c1.getFilters(column='campaign_id', value=['fdbieo5'])
 
  
             

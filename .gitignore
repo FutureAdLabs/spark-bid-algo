@@ -4,6 +4,7 @@ etl-spark-*
 !test/
 .vscode/
 output/
+.pyc
 .pytest_cache/
 *~
 *#
