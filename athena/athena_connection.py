@@ -7,7 +7,7 @@ import subprocess
 
 def clone_repo(repo_name, branch_name="main"):
     if(not(os.path.exists(repo_name))):
-        bashCommand = f"git clone -b {branch_name} https://github.com/FutureAdLabs/{repo_name}.git"
+        bashCommand = f"git clone -b {branch_name} https://${GIT_TOKEN}@github.com/FutureAdLabs/{repo_name}.git"
         process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
         output, error = process.communicate()
         if(error):
@@ -52,7 +52,7 @@ class AthenConnection:
     
 if __name__ == '__main__':
     c = AthenConnection(filter_by='campaign_id', filters=['fdbieo5'],
-                        start_date='2022-01-10', end_date='2022-02-06')
+                        start_date='2022-01-10', end_date='2022-01-11')
     c.getS3Path()
     
     # clone_repo("etl-spark-athena")

@@ -13,7 +13,12 @@ class SparkPipeline:
     def __init__():
         self.num = 1
     
-    def getData(self, file_path, file_type):
+    def getData(self, file_path=None, file_type=None):
+
+        if file_path is None:
+            file_path = AthenConnection()
+        if file_type is None:
+            file_type = 'csv'
 
         df = self.spark.read.format(file_type)\
         .options(header='true', inferSchema='true')\
@@ -48,7 +53,8 @@ class SparkPipeline:
         df_scored = df.transform(score.transform)
 
         # save scored file
-        self.loadFile(df_scored)
+        # self.loadFile(df_scored)
+        print(df_scored)
         
         return df_scored
 
