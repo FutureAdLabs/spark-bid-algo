@@ -35,7 +35,7 @@ class SparkConnection:
         self.sql_shuffle_partitions = kwargs.get('sql_shuffle_partitions',1000)
     
     # create spark connection
-    def createSparkConnection(**kwargs):
+    def createSparkConnection(self, **kwargs):
 
         # define python envs
         os.environ['PYSPARK_PYTHON'] = '/usr/bin/python3'
@@ -79,3 +79,7 @@ class SparkConnection:
 
     def closeSparkConnection(sc):
         sc.stop()
+        
+if __name__ == "__main__":
+    c = SparkConnection()
+    c.createSparkConnection()

@@ -7,7 +7,7 @@ import subprocess
 
 def clone_repo(repo_name, branch_name="main"):
     if(not(os.path.exists(repo_name))):
-        bashCommand = f"git clone -b {branch_name} https://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@github.com/FutureAdLabs/{repo_name}.git"
+        bashCommand = f"git clone -b {branch_name} https://github.com/FutureAdLabs/{repo_name}.git"
         process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
         output, error = process.communicate()
         if(error):
@@ -16,7 +16,7 @@ def clone_repo(repo_name, branch_name="main"):
         print(output)
     else:
         print("--- repository already cloned")
-        
+                
 
 # importing path
 athena_path_old = f"{os.environ['HOME']}/etl-spark-athena/algos-common-scripts/"
