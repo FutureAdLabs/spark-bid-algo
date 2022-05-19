@@ -9,7 +9,7 @@ from model.config import adconfig
 from model.bid import admodels
 
 class SparkPipeline:
-
+    ''' spark pipeline helper class'''
     def __init__():
         self.num = 1
     
