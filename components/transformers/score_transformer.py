@@ -114,3 +114,7 @@ class Score_T(
                    
     
         return dfw
+
+if __name__ == '__main__':
+    c = Score_T()
+    c.transform()

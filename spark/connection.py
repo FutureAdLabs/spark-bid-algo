@@ -19,67 +19,78 @@ import pyspark.ml.param as pmparam
 import pyspark.ml.pipeline as pmpip 
 
 
-class SparkConnection:
+# class SparkConnection:
     
-    def __init__(self, kwargs):
-        self.app_name = kwargs.get('app_name','App1')
-        self.master = kwargs.get('master','yarn')
-        self.ui_port = kwargs.get('ui_port','4044')
-        self.driver_port = kwargs.get('driver_port','8887')
-        self.cores_max = kwargs.get('cores_max','2')
-        self.executor_cores = kwargs.get('executor_cores','1')
-        self.driver_memory = kwargs.get('driver_memory','10g') 
-        self.executor_memory = kwargs.get('executor_memory','10g')
-        self.dynamicAllocation = kwargs.get('dynamicAllocation','false')
-        self.aqe = kwargs.get('aqe', 'true')
-        self.sql_shuffle_partitions = kwargs.get('sql_shuffle_partitions',1000)
-    
-    # create spark connection
-    def createSparkConnection(self, **kwargs):
+# def __init__(**kwargs):
+#     self.app_name = kwargs.get('app_name','App1')
+#     self.master = kwargs.get('master','yarn')
+#     self.ui_port = kwargs.get('ui_port','4044')
+#     self.driver_port = kwargs.get('driver_port','8887')
+#     self.cores_max = kwargs.get('cores_max','2')
+#     self.executor_cores = kwargs.get('executor_cores','1')
+#     self.driver_memory = kwargs.get('driver_memory','10g') 
+#     self.executor_memory = kwargs.get('executor_memory','10g')
+#     self.dynamicAllocation = kwargs.get('dynamicAllocation','false')
+#     self.aqe = kwargs.get('aqe', 'true')
+#     self.sql_shuffle_partitions = kwargs.get('sql_shuffle_partitions',1000)
 
-        # define python envs
-        os.environ['PYSPARK_PYTHON'] = '/usr/bin/python3'
-        os.environ['PYSPARK_DRIVER_PYTHON'] = '/usr/bin/python3'
+# create spark connection
+def createSparkConnection(**kwargs):
+    app_name = kwargs.get('app_name','App1')
+    master = kwargs.get('master','yarn')
+    ui_port = kwargs.get('ui_port','4044')
+    driver_port = kwargs.get('driver_port','8887')
+    cores_max = kwargs.get('cores_max','2')
+    executor_cores = kwargs.get('executor_cores','1')
+    driver_memory = kwargs.get('driver_memory','10g') 
+    executor_memory = kwargs.get('executor_memory','10g')
+    dynamicAllocation = kwargs.get('dynamicAllocation','false')
+    aqe = kwargs.get('aqe', 'true')
+    sql_shuffle_partitions = kwargs.get('sql_shuffle_partitions',1000)
 
-        # setting up spark configurations 
-        conf = SparkConf()  
+    # define python envs
+    os.environ['PYSPARK_PYTHON'] = '/usr/bin/python3'
+    os.environ['PYSPARK_DRIVER_PYTHON'] = '/usr/bin/python3'
 
-        conf.setAppName(self.app_name)
-        conf.set('spark.master', self.master)
+    # setting up spark configurations 
+    conf = SparkConf()  
 
-        # setting spark ports
-        conf.set('spark.ui.port', self.self.ui_port)
-        conf.set('spark.driver.port', self.driver_port)
+    conf.setAppName(app_name)
+    conf.set('spark.master', master)
 
-        # setting spark cores
-        conf.set('spark.cores.max', self.cores_max)
-        conf.set('spark.executor.cores', self.executor_cores)
+    # setting spark ports
+    conf.set('spark.ui.port', ui_port)
+    conf.set('spark.driver.port', driver_port)
 
-        # setting spark memory
-        conf.set('spark.driver.memory', self.driver_memory)
-        conf.set('spark.executor.memory', self.executor_memory)
+    # setting spark cores
+    conf.set('spark.cores.max', cores_max)
+    conf.set('spark.executor.cores', executor_cores)
 
-        # setting 
-        conf.set("spark.dynamicAllocation.enabled", self.dynamicAllocation)
+    # setting spark memory
+    conf.set('spark.driver.memory', driver_memory)
+    conf.set('spark.executor.memory', executor_memory)
 
-        # setting spark sql properties
-        conf.set('spark.sql.shuffle.partitions', self.sql_shuffle_partitions)
-        conf.set('spark.sql.adaptive.coalescePartitions.enabled', self.aqe)
+    # setting 
+    conf.set("spark.dynamicAllocation.enabled", dynamicAllocation)
 
-        # building ipark session
-        spark = SparkSession.builder \
-        .config(conf=conf) \
-        .enableHiveSupport() \
-        .getOrCreate()
+    # setting spark sql properties
+    conf.set('spark.sql.shuffle.partitions', sql_shuffle_partitions)
+    conf.set('spark.sql.adaptive.coalescePartitions.enabled', aqe)
 
-        sc = spark.sparkContext
-        sc.setLogLevel('WARN')
+    # building ipark session
+    spark = SparkSession.builder \
+    .config(conf=conf) \
+    .enableHiveSupport() \
+    .getOrCreate()
 
-        return spark, sc
+    # sc = spark.sparkContext
+    # sc.setLogLevel('WARN')
 
-    def closeSparkConnection(sc):
-        sc.stop()
+    return spark
+
+def closeSparkConnection(sc):
+    sc.stop()
         
-if __name__ == "__main__":
-    c = SparkConnection()
-    c.createSparkConnection()
+# if __name__ == "__main__":
+#     c = SparkConnection()
+#     c.createSparkConnection()
