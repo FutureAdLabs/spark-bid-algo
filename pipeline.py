@@ -23,11 +23,11 @@ class SparkPipeline():
         self.start_date = kwargs.get('start_date','2022-01-10')
         self.end_date = kwargs.get('end_date', '2022-01-11')
     
-    # def getPathFromAthena(self):
-    #     path = AthenaConnection()
-    #     print(f'ATHENA FILE PATH == {path}')
+    def getPathFromAthena(self):
+        path = AthenaConnection()
+        print(f'ATHENA FILE PATH == {path}')
 
-    #     return path
+        return path
 
     def getData(self, file_path=None, file_type=None):
         if file_path is None:
