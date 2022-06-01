@@ -53,29 +53,9 @@ class SparkPipeline():
 
     def score_data(self, *kwargs):
 
-        self.model_params = {'AdvertiserId': 'toyw1ri',
-                            'CampaignId': '5ih9e40',
-                            'AlgoCampaignId': 'dn77n1o',
-                            'CamapignName': 'NVPC',
-                            'Owner': 'Advertiser',
-                            'OwnerId': 'AdvertiserId',
-                            'DataKey': 'AdvertiserId',
-                            'ColumnFilters': ['AdvertiserId'],
-                            'date_start': '2021-11-25',
-                            'date_end': '2021-12-07',
-                            'speed': 8,
-                            'bfid': 4,
-                            'basecpmbid': 1.0,
-                            'mincpmbid': 1.0,
-                            'maxcpmbid': 10.0,
-                            'BidListId': 148759117,
-                            'BlockListId': '',
-                            'TargetListId': ''}
-
-
-        
         # get input data for scoring
         # self.getPathFromAthena()
+        
         file_path  = self.getData()
 
         # create connection
@@ -91,21 +71,22 @@ class SparkPipeline():
 
 
         # score data
-        # score = Score_T(kpi='ER',
-        #                 modelParams=self.model_params,
-        #                 verbose=2,
-        #                 mutualInformation=False)
+        score = Score_T(kpi='ER',
+                        modelParams=self.model_params,
+                        verbose=2,
+                        mutualInformation=False)
 
-        # df_scored = self.df.transform(score.transform)
+        df_scored = self.df.transform(score.transform)
 
         # save scored file
-        # self.loadFile(df_scored)
+        self.loadFile(df_scored)
         score = Score_T.transform(self, self.df)
+        
         print(score)
 
         # print(df_scored)
         
-        # return df_scored
+        return df_scored
 
 if __name__ == "__main__":
     c = SparkPipeline()
