@@ -20,7 +20,7 @@ def clone_repo(repo_name, branch_name="main"):
 
 # importing path
 athena_path_old = f"{os.environ['HOME']}/etl-spark-athena/algos-common-scripts/"
-clone_repo("etl-spark-athena", 'DS-678')
+# clone_repo("etl-spark-athena", 'DS-678')
 add_athena = "/athena" if "athena" not in os.getcwd() else ""
 athena_path = f'{os.getcwd() + add_athena}/etl-spark-athena/algos-common-scripts/'
 sys.path.append(athena_path)
