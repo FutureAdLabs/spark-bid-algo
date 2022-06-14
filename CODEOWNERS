@@ -1,0 +1,5 @@
+# This file is to assign ownership over the repo, to require
+# Pull requests to be reviewed by these people before merging. # These owners will be the default owners for everything in
+# the repo.
+
+* @FutureAdLabs/senior-ds
