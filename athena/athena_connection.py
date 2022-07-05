@@ -7,8 +7,7 @@ import subprocess
 
 def clone_repo(repo_name, branch_name="main"):
     if(not(os.path.exists(repo_name))):
-        bashCommand = f"git clone -b {branch_name}\
-        https://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@github.com/FutureAdLabs/{repo_name}.git"
+        bashCommand = f"git clone -b {branch_name}${GIT_TOKEN}@github.com/FutureAdLabs/{repo_name}.git"
         process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
         output, error = process.communicate()
         if(error):
