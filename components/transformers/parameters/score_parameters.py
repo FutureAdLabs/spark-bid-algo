@@ -1,4 +1,7 @@
 from pyspark.ml.param import Param, Params, TypeConverters
+from pyspark.sql import functions as f
+from pyspark.sql.functions import lit,col,sum, avg, max, first, min, mean
+
 
 class Verbose(Params):
     """Mixin for param minGroupSize: verbose."""
@@ -33,21 +36,21 @@ class ModelParams(Params):
         """Gets the model parameters dict. """
         return self.getOrDefault(self.modelParams)
 
-class AlgoConfig(Params):
+class Config(Params):
     """Mixin for config:scoring config."""
 
-    algoConfig = Param(
+    config = Param(
         Params._dummy(),
         "config", "configurations used for scoring",
         typeConverter=TypeConverters.identity,
     )
 
     def __init__(self):
-        super(AlgoConfig, self).__init__()
+        super(ModelParams, self).__init__()
         
-    def getAlgoConfig(self):
+    def getconfig(self):
         """Gets the model parameters dict. """
-        return self.getOrDefault(self.algoConfig)
+        return self.getOrDefault(self.config)
 
 class MinScore(Params):
     """Mixin for param minScore: minimum score value."""
@@ -101,7 +104,7 @@ class Beta(Params):
         return self.getOrDefault(self.beta)
     
 class KPI(Params):
-    """Mixin for param KPI: list of kpi rates."""
+    """Mixin for param KPI: list of kpi rates.""" 
 
     kpi = Param(
         Params._dummy(),
@@ -116,7 +119,24 @@ class KPI(Params):
     def getKPI(self):
         """Gets the value of beta or its default value. """
         return self.getOrDefault(self.kpi)
+    
+class ScoringFeatures(Params):
+    """Mixin for param scoringFeatures: list of scoring features.""" 
 
+    scoringFeatures = Param(
+        Params._dummy(),
+        "scoringFeatures", "list of scoring features to use.",
+        typeConverter=TypeConverters.toListString,
+    )
+
+    def __init__(self):
+        super(ScoringFeatures, self).__init__()
+        self._setDefault(scoringFeatures=[])
+        
+    def getScoringFeatures(self):
+        """Gets the value of scoringFeatures or its default value. """
+        return self.getOrDefault(self.scoringFeatures)
+    
     
 class RSample(Params):
     """Mixin for param KPI: bool to use random sampling or not."""
@@ -146,15 +166,17 @@ class KPIAggregation(Params):
     )
 
     def __init__(self):
-        super(KPIAggregation, self).__init__()
-        self._setDefault(kpiAggregation={'engagement':'sum',
-                                   'click':'sum',
-                                   'vtr':'sum',
-                                   'video-end':'sum',
-                                   'video-start':'sum',
-                                   'viewable': 'sum',
-                                   'impression': 'sum'
-                               })
+        super(KPIAggregation, self).__init__()        
+        self._setDefault(kpiAggregation={'engagement' : sum("engagement").alias("engagement"),
+                                         'click' : sum("click").alias("click"),
+                                         'video-end' : sum("video-end").alias("video-end"),
+                                         'video-start' : sum("video-start").alias("video-start"),
+                                         'viewable' : sum("viewable").alias("viewable"),
+                                         'trackable' : sum("trackable").alias("trackable"),
+                                         'impression' : sum("impression").alias("impression"),
+                                         'group_size' : sum("group_size").alias("group_size"),
+                                         'target': sum("target").alias("target")
+                                        })
 
     def getKPIS(self):
         """Gets the value of beta or its default value. """
@@ -172,15 +194,22 @@ class FeatureAggregation(Params):
 
     def __init__(self):
         super(FeatureAggregation, self).__init__()
-        self._setDefault(featureAggregation={ 'target':'sum',
-                                   'group_size':'sum',
-                                   'trackable' : 'sum',
-                                   'Recency':'mean',
-                                   'Frequency':'mean',
-                                   "LogEntryTime":'nunique'
-                               })
-
-    def getKPIS(self):
+        self._setDefault(featureAggregation={'Recency': mean("Recency").alias("Recency"),
+                                             'Frequency': mean("Frequency").alias("Frequency"),
+                                             # 'LogEntryTime':'nunique',
+                                             'Country': first("Country").alias("Country"),
+                                             'AdvertiserId': first("AdvertiserId").alias("AdvertiserId"),
+                                             'CampaignId': first("CampaignId").alias("CampaignId"),
+                                             'AdgroupId': first("AdgroupId").alias("AdgroupId"),
+                                             'AdFormat': first("AdFormat").alias("AdFormat"),
+                                             'FoldPosition': first("FoldPosition").alias("FoldPosition"),
+                                             'RenderingContext': first("RenderingContext").alias("RenderingContext"),
+                                             'OS': first("OS").alias("OS"),
+                                             'DeviceType': first("DeviceType").alias("DeviceType"),
+                                             'Browser': first("Browser").alias("Browser"),
+                                             'Site': first("Site").alias("Site")
+                                            })
+    def getFeatureAggregation(self):
         """Gets the value of beta or its default value. """
         return self.getOrDefault(self.featureAggregation)
 
@@ -196,7 +225,13 @@ class CostAggregation(Params):
 
     def __init__(self):
         super(CostAggregation, self).__init__()
-        self._setDefault(costAggregation={'AdvertiserCurrency':'min'})
+        self._setDefault(costAggregation={'AdvertiserCurrency':f.expr('percentile_approx(AdvertiserCurrency, 0.5)')\
+                                          .alias('AdvertiserCurrency'),
+                                          'Cost':f.expr('percentile_approx(Cost, 0.5)').alias('Cost'),
+                                          'PartnerCostInUSDollars': f.expr('PartnerCostInUSDollars(PartnerCostInUSDollars, 0.5)')\
+                                          .alias('PartnerCostInUSDollars'), 
+                                          
+                                         })
 
     def getKPIS(self):
         """Gets the value of beta or its default value. """
