@@ -5,9 +5,9 @@ from os import path
 
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from spark_model.config import adconfig
-from spark_model.score import adlogdata
-from spark_components.transformers.parameters.score_parameters import *
+from model.config import adconfig
+from model.score import adlogdata
+from components.transformers.parameters.score_parameters import *
 
 import pyspark.sql.functions as f
 from pyspark import keyword_only
@@ -29,7 +29,7 @@ class Score_T(
     Clean,
     ScoringFunction,
     MutualInformation
-):
+):    
     @keyword_only
     def __init__(
         self,
@@ -52,6 +52,7 @@ class Score_T(
         super().__init__()
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
+       
         
     @keyword_only
     def setParams(
@@ -98,8 +99,9 @@ class Score_T(
         pivotDF.show(truncate=False)
         
         return pivotDF
+    
 
-    def transform(self, dataset):
+    def _transform(self, dataset):
         
         # Initialise config
         config = self.set_config()
@@ -110,7 +112,11 @@ class Score_T(
         parameters={key.name:parameters[key] for key, value in parameters.items()}
         
         adio = adlogdata(config, minScore=parameters['minScore'],minGroupSize=parameters['minGroupSize'])
-        dfw = adio.get_FP_weights(df=dataset, **parameters).sort(f.col("score").desc())
+        dfw = adio.get_FP_weights(df=dataset, **parameters)#.sort(f.col("score").desc())
                    
     
         return dfw
+
+if __name__ == '__main__':
+    c = Score_T()
+    c.transform()

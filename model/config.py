@@ -10,7 +10,10 @@ from pyludio.adutils import *
 import findspark
 findspark.init() 
 
-import pyspark
+# os.environ['PYSPARK_PYTHON'] = '/usr/bin/python3'
+# os.environ['PYSPARK_DRIVER_PYTHON'] = '/usr/bin/python3'
+
+# import pyspark
 from pyspark.sql.types import DoubleType
 from pyspark.sql import DataFrame
 from pyspark.sql import Row
@@ -123,12 +126,16 @@ class adconfig():
             raise
 
         #"CamapignName"
-        cols = data.pop("ColumnFilters")
-        params["ColumnFilters"] = {item:data[item] for item in cols}
+        # cols = data.pop("ColumnFilters")
+        # params["ColumnFilters"] = {item:data[item] for item in cols}
+        params["ColumnFilters"] = "AdvertiserId"
         
         #get date rages
-        d1 = data.pop("date_start")
-        d2 = data.pop("date_end")
+        # d1 = data.pop("date_start")
+        # d2 = data.pop("date_end")
+        d1 = "2021-11-25"
+        d2 = "2021-11-28"
+        
         #
         day1a = datetime.strptime(d1, '%Y-%m-%d')
         day2a = datetime.strptime(d2, '%Y-%m-%d')
@@ -137,10 +144,10 @@ class adconfig():
         params['day2'] = day2a.date()
         
         #get other params
-        speedtemp = data.pop("speed")
+        speedtemp = 6
         params['speed'] = self.get_opspeed(speedtemp)
 
-        params = dict(**params, **data)
+        # params = dict(**params, **data)
         #for x in ['basecpmbid','mincpmbid','maxcpmbid']:
         #    params[x] = data[x]
         #
@@ -230,8 +237,9 @@ class adconfig():
         model = 'FP'
         use_mutualinf = kwargs.get('mutualInformation',False)
         
-        base_features=['AdFormat',"OS",
-                        'FoldPosition','Site']
+        base_features=['Country', 'AdvertiserId', 'CampaignId', 'AdgroupId',
+                       'AdFormat', 'FoldPosition', 'RenderingContext', 'OS',
+                       'DeviceType', 'Browser', 'Site']
         
         # Using mutual information for the best training features
         if use_mutualinf:
@@ -457,7 +465,7 @@ class adconfig():
         # Warn incase we need to drop larger number of rows because of NaN
         # df = df.replace(r'^\s*$', np.NaN)
         dfclean = df.dropna(how='any')
-        if self.verbose>-1:
+        if self.verbose>2:
             if df.count()>dfclean.count():
                 print("-"*10,f'WARNNING: Dropping missing rows with any missing values',"-"*10)
                 print('DataFrame rows before dropna: ',df.count())
@@ -472,7 +480,7 @@ class adconfig():
             pfrac = kwargs.get('pfrac',0.1)        
             pfrac = float(pfrac)
 
-            if self.verbose>-1:
+            if self.verbose>2:
                 print("-"*10,f'CHecking for class imbalance',"-"*10)
                 print(f'the fraction of positive targets is: {pfrac};  df.shape=',df.count())
                 

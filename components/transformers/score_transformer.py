@@ -29,7 +29,7 @@ class Score_T(
     Clean,
     ScoringFunction,
     MutualInformation
-):
+):    
     @keyword_only
     def __init__(
         self,
@@ -52,6 +52,7 @@ class Score_T(
         super().__init__()
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
+       
         
     @keyword_only
     def setParams(
@@ -98,8 +99,9 @@ class Score_T(
         pivotDF.show(truncate=False)
         
         return pivotDF
+    
 
-    def transform(self, dataset):
+    def _transform(self, dataset):
         
         # Initialise config
         config = self.set_config()
@@ -110,7 +112,7 @@ class Score_T(
         parameters={key.name:parameters[key] for key, value in parameters.items()}
         
         adio = adlogdata(config, minScore=parameters['minScore'],minGroupSize=parameters['minGroupSize'])
-        dfw = adio.get_FP_weights(df=dataset, **parameters).sort(f.col("score").desc())
+        dfw = adio.get_FP_weights(df=dataset, **parameters)#.sort(f.col("score").desc())
                    
     
         return dfw

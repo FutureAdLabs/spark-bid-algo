@@ -2,7 +2,7 @@ import time
 import sys, os
 
 from spark.connection import createSparkConnection, closeSparkConnection
-from athena_connection import AthenaConnection
+# from athena.athena_connection import AthenaConnection
 
 from components.transformers.score_transformer import Score_T
 from components.transformers.parameters.score_parameters import *
@@ -76,7 +76,7 @@ class SparkPipeline():
         
         # get input data for scoring
         # self.getPathFromAthena()
-        file_path  = self.getData()
+        file_path  = 's3://aws-athena-query-results-489880714178-eu-west-1/cpe_sample_location/1c243bf7-3ec6-434e-8cd0-871263ed933c.csv'
 
         # create connection
         self.spark = createSparkConnection()
@@ -100,7 +100,7 @@ class SparkPipeline():
 
         # save scored file
         # self.loadFile(df_scored)
-        score = Score_T.transform(self, self.df)
+        score = Score_T.transform(self, df)
         print(score)
 
         # print(df_scored)

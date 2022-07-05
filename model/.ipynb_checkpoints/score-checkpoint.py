@@ -15,7 +15,10 @@ from scipy.stats import beta, binom
 # import findspark
 # findspark.init() 
 
-import pyspark
+# os.environ['PYSPARK_PYTHON'] = '/usr/bin/python3'
+# os.environ['PYSPARK_DRIVER_PYTHON'] = '/usr/bin/python3'
+
+# import pyspark
 from pyspark.sql.types import DoubleType
 from pyspark.sql import DataFrame
 from pyspark.sql import Row
@@ -200,7 +203,7 @@ class adlogdata(adconfig):
         return X
 
     
-    def get_FP_weights(self,df=None,**kwargs):
+    def get_FP_weights(self, df=None, spark=None, **kwargs):
         
         '''
         This function does groupby by a hash of rows to dtermine frequency. 
@@ -285,21 +288,29 @@ class adlogdata(adconfig):
                 aggregation[x]= (x, 'first')
 
         # Groupby the hash column        
-        if self.verbose>-1:
+        if self.verbose>2:
             print("-"*10,f'Data with shape {dfnew.count()}  will be aggregated as: ',"-"*10)
             print(aggregation)
         
         # dfweighted = dfnew.groupby('hash').agg(**aggregation).reset_index()
-        dfweighted = dfnew.groupby('hash').agg(first("Site").alias("Site"),
+        dfweighted = dfnew.groupby('hash').agg(first("Country").alias("Country"),
+                                               first("AdvertiserId").alias("AdvertiserId"),
+                                               first("CampaignId").alias("CampaignId"),
+                                               first("AdgroupId").alias("AdgroupId"),
                                                first("AdFormat").alias("AdFormat"),
-                                               first("OS").alias("OS"),
                                                first("FoldPosition").alias("FoldPosition"),
-                                               sum("AdvertiserCurrency").alias("AdvertiserCurrency"),
+                                               first("RenderingContext").alias("RenderingContext"),
+                                               first("OS").alias("OS"),
+                                               first("DeviceType").alias("DeviceType"),
+                                               first("Browser").alias("Browser"),
+                                               first("Site").alias("Site"),
                                                sum("group_size").alias("group_size"),
                                                sum("engagement").alias("engagement"),
                                                sum("click").alias("click"),
-                                               # sum("video-start").alias("video-start"),
-                                               # sum("video-end").alias("video-end")
+                                               sum("video-start").alias("video-start"),
+                                               sum("video-end").alias("video-end"),
+                                               sum("viewable").alias("viewable"),
+                                               sum("trackable").alias("trackable")
                                               )
         
         # Compute to add KPI rate columns
@@ -323,31 +334,31 @@ class adlogdata(adconfig):
                  'eCPA':'click',
                  'CPA':'group_size'}
         
-        @f.pandas_udf("double")
-        def get_beta_scores(success:pd.Series, trials:pd.Series, rSample=False)-> pd.Series:
-            """
-            Estimate the score of an impression.
-            Args:
-                success (int):  Number of times KPI achieved
-                trials (int):  Number of time we bought the impression
-            """
+#         @f.pandas_udf("double")
+#         def get_beta_scores(success:pd.Series, trials:pd.Series, rSample=False)-> pd.Series:
+#             """
+#             Estimate the score of an impression.
+#             Args:
+#                 success (int):  Number of times KPI achieved
+#                 trials (int):  Number of time we bought the impression
+#             """
 
-            a = 1 + success
-            b = 1 + trials - success
+#             a = 1 + success
+#             b = 1 + trials - success
 
-            mean, var, skew, kurt = beta.stats(a, b, moments='mvsk')
+#             mean, var, skew, kurt = beta.stats(a, b, moments='mvsk')
 
-            if rSample:
-                # Random beta sampling
-                score = np.random.beta(a,b)
-            else: 
-                # Use mean
-                score = mean
+#             if rSample:
+#                 # Random beta sampling
+#                 score = np.random.beta(a,b)
+#             else: 
+#                 # Use mean
+#                 score = mean
 
-            score = score /np.sqrt(var)
-            score = score/score.max()        
+#             score = score /np.sqrt(var)
+#             score = score/score.max()        
 
-            return pd.Series(score)
+#             return pd.Series(score)
         
         @f.pandas_udf("double")
         def get_fp_scores(P: pd.Series, L1: pd.Series)-> pd.Series:
@@ -382,18 +393,18 @@ class adlogdata(adconfig):
                     print("-"*10,f'Scoring {krate}',"-"*10)
                 col1 = krate
                 col2 = denom[krate]
-                if beta:
-                    dfweighted = dfweighted.withColumn(f"score_{krate}", get_beta_scores(col1, col2, rSample=rSample))
-                else:       
-                    dfweighted = dfweighted.withColumn(f"score_{krate}", get_fp_scores(col1, col2))
+                # if beta:
+                #     dfweighted = dfweighted.withColumn(f"score_{krate}", get_beta_scores(col1, col2, rSample=rSample))
+                # else:       
+                dfweighted = dfweighted.withColumn(f"score_{krate}", get_fp_scores(col1, col2))
                 
 
-        if self.verbose>0:
-            print("-"*10,f'Using Mean of all scores as final score',"-"*10)
+#         if self.verbose>0:
+#             print("-"*10,f'Using Mean of all scores as final score',"-"*10)
             
-        score_cols = [col for col in dfweighted.columns if 'score_' in col]        
+#         score_cols = [col for col in dfweighted.columns if 'score_' in col]        
    
-        dfweighted = dfweighted.withColumn("score", (col(score_cols[0]) + col(score_cols[1])) /len(score_cols))
+#         dfweighted = dfweighted.withColumn("score", (col(score_cols[0]) + col(score_cols[1])) /len(score_cols))
         
         if clean:
             cols = [] 
