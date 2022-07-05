@@ -2,8 +2,7 @@ import sys, os
 import warnings
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-import pandas as pd
-import numpy as np
+
 from .config import adconfig
 
 from pandas.api.types import is_string_dtype
@@ -12,11 +11,14 @@ from pandas.api.types import is_numeric_dtype
 # Import the beta function and the binomial function
 from scipy.stats import beta, binom
 
-# import findspark
-# findspark.init() 
+import findspark
+findspark.init()
 
 # os.environ['PYSPARK_PYTHON'] = '/usr/bin/python3'
 # os.environ['PYSPARK_DRIVER_PYTHON'] = '/usr/bin/python3'
+
+import pandas as pd
+import numpy as np
 
 # import pyspark
 from pyspark.sql.types import DoubleType
@@ -24,7 +26,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql import Row
 import pyspark.sql.functions as f
 from pyspark.sql.functions import sha2, concat_ws, udf, log
-from pyspark.sql.functions import lit,col,sum, avg, max, first, min
+from pyspark.sql.functions import lit,col,sum, avg, max, first, min, mean
 
 
 class adlogdata(adconfig):
@@ -78,15 +80,46 @@ class adlogdata(adconfig):
         # If groupby features not given use instance.
         if groupby_columns is None:
             groupby_columns = self.groupby_features(**kwargs)
+            groupby_columns=list(set(df.columns) & set(groupby_columns))
         
         if self.verbose>-1:
                     print("-"*10,f'Hashing features using {groupby_columns}',"-"*10)
                 
         df_columns = groupby_columns
+        
         df = df.withColumn("hash", sha2(concat_ws("||", * df_columns), 256))
-  
-        return df
+        
+        return df        
     
+    @staticmethod
+    def get_beta_scores(success, trials, rSample=False):
+        """
+        Estimate the score of an impression.
+    
+        Args:
+            success (int):  Number of times KPI achieved
+            trials (int):  Number of time we bought the impression
+        """
+
+        a = 1 + success
+        b = 1 + trials - success
+
+        mean, var, skew, kurt = beta.stats(a, b, moments='mvsk')
+        
+        if rSample:
+            # Random beta sampling
+            score = np.random.beta(a,b)
+        else: 
+            # Use mean
+            score = mean
+        
+        score = score /np.sqrt(var)
+        # score = score/score.max()        
+
+        return score
+
+
+
     def apply_FP_filters(self,df):
         """
         Filter using min score and min groupsize
@@ -203,10 +236,10 @@ class adlogdata(adconfig):
         return X
 
     
-    def get_FP_weights(self, df=None, spark=None, **kwargs):
+    def get_FP_weights(self,df=None,**kwargs):
         
         '''
-        This function does groupby by a hash of rows to dtermine frequency. 
+        This function does groupby by a hash of rows to determine frequency. 
         The groups are then aggregated according to their dtype. 
         We have a few way checking dtype:
            i) df['numeric'].dtype.kind in 'biufc' #biufc: bool,int (signed), unsigned int, float, complex
@@ -218,36 +251,27 @@ class adlogdata(adconfig):
             return 
         
         verbose = kwargs.get('verbose',0)
-        modelParams= kwargs.get('modelParams')
-        beta= kwargs.get('beta')
-        kpi= kwargs.get('kpi')
-        rSample= kwargs.get('rSample')
-        kpiAggregation= kwargs.get('kpiAggregation')
-        featureAggregation= kwargs.get('featureAggregation')
-        costAggregation= kwargs.get('costAggregation')
-        boxPrice= kwargs.get('boxPrice')
-        clean= kwargs.get('clean')
-        scoringFunction= kwargs.get('scoringFunction')
+        modelParams = kwargs.get('modelParams')
+        beta = kwargs.get('beta')
+        kpi = kwargs.get('kpi')
+        scoringFeatures = kwargs.get('scoringFeatures')
+        rSample = kwargs.get('rSample')
+        kpiAggregation = kwargs.get('kpiAggregation')
+        featureAggregation = kwargs.get('featureAggregation')
+        costAggregation = kwargs.get('costAggregation')
+        boxPrice = kwargs.get('boxPrice')
+        clean = kwargs.get('clean')
+        scoringFunction = kwargs.get('scoringFunction')
         
         if self.verbose>-1:
             print("-"*10,f'KPIs being used are:',"-"*10)
             print(kwargs)
-    
             
-#         if scoringFunction is None:
-#             if beta:
-#                 if self.verbose>0:
-#                     print("-"*10,f'Scoring function used is: BETA',"-"*10)
-#                 scoringFunction = self.get_beta_scores
-                
-#             else:
-#                 if self.verbose>-1:
-#                     print("-"*10,f'Scoring function used is: FP',"-"*10)
-#                 scoringFunction = self.get_fp_scores
-                
-                
-        df_ = df.alias('df_')   
+        df_ = df.alias('df_')
         dfnew = self.select_features(df=df_,**kwargs)
+        
+        print("****"*20)
+        print(dfnew)
         
         if not 'hash' in dfnew.columns:            
             dfnew = self.add_hash_column(df=dfnew,**kwargs)
@@ -261,16 +285,30 @@ class adlogdata(adconfig):
             
         # Aggregate function dict
         aggregation = {}
-        for x in dfnew.columns:
-            if x in featureAggregation.keys():
-                aggregation[x] = (x, featureAggregation[x])
+        
+        use_default = True
+        if scoringFeatures is not None:
+            for x in scoringFeatures:
+                if x in featureAggregation.keys():
+                    aggregation[x] = featureAggregation[x]
+            if len(aggregation) == 0:
+                print("*"*10, f'SCORING DIMENTIONS NOT FOUND', "*"*10)
+            else:
+                use_default = False
                 
-            elif x in kpiAggregation.keys():
-                aggregation[x] = (x, kpiAggregation[x])
+        if use_default:
+            print("*"*10, f'USING DEFAULT DIMENTIONS FOR SCORING', "*"*10)
+            for x in dfnew.columns:
+                if x in featureAggregation.keys():
+                    aggregation[x] = featureAggregation[x]
                 
+        for x in dfnew.columns:   
+            if x in kpiAggregation.keys():
+                aggregation[x] = kpiAggregation[x]
+
             elif x in costAggregation.keys():
-                aggregation[x] = (x, costAggregation[x])
-                
+                aggregation[x] = costAggregation[x]
+
                 if boxPrice:    
                     def percentile(n):
                         def percentile_(x):
@@ -278,43 +316,23 @@ class adlogdata(adconfig):
                         return percentile_
                     aggregation['price_mean'] = (x, 'mean')
                     aggregation['price_median'] = (x, 'median')
-                    aggregation['price_p25'] = (x, percentile(15))
+                    aggregation['price_p25'] = (x, percentile(25))
                     aggregation['price_p75'] = (x, percentile(75))
                     aggregation['price_min'] = (x, 'min')
                     aggregation['price_max'] = (x, 'max')
-                    
-            elif x != 'hash':
-                
-                aggregation[x]= (x, 'first')
-
-        # Groupby the hash column        
-        if self.verbose>2:
-            print("-"*10,f'Data with shape {dfnew.count()}  will be aggregated as: ',"-"*10)
-            print(aggregation)
         
-        # dfweighted = dfnew.groupby('hash').agg(**aggregation).reset_index()
-        dfweighted = dfnew.groupby('hash').agg(first("Country").alias("Country"),
-                                               first("AdvertiserId").alias("AdvertiserId"),
-                                               first("CampaignId").alias("CampaignId"),
-                                               first("AdgroupId").alias("AdgroupId"),
-                                               first("AdFormat").alias("AdFormat"),
-                                               first("FoldPosition").alias("FoldPosition"),
-                                               first("RenderingContext").alias("RenderingContext"),
-                                               first("OS").alias("OS"),
-                                               first("DeviceType").alias("DeviceType"),
-                                               first("Browser").alias("Browser"),
-                                               first("Site").alias("Site"),
-                                               sum("group_size").alias("group_size"),
-                                               sum("engagement").alias("engagement"),
-                                               sum("click").alias("click"),
-                                               sum("video-start").alias("video-start"),
-                                               sum("video-end").alias("video-end"),
-                                               sum("viewable").alias("viewable"),
-                                               sum("trackable").alias("trackable")
-                                              )
+        # percentile_25 = f.expr('percentile_approx(PartnerCostInUSDollars, 0.25)')
+        # percentile_50 = f.expr('percentile_approx(PartnerCostInUSDollars, 0.5)')
+        # percentile_75 = f.expr('percentile_approx(PartnerCostInUSDollars, 0.75)')
         
+        # **aggregation
+        
+        aggregation_new = list(aggregation.values())
+        dfweighted = dfnew.groupby('hash').agg(*aggregation_new)#.reset_index()
+       
         # Compute to add KPI rate columns
         dfweighted = self.compute_kpi_rate(dfweighted, kpi)
+        # dfweighted.show()
         
 
         if self.verbose>-1:
@@ -334,31 +352,6 @@ class adlogdata(adconfig):
                  'eCPA':'click',
                  'CPA':'group_size'}
         
-#         @f.pandas_udf("double")
-#         def get_beta_scores(success:pd.Series, trials:pd.Series, rSample=False)-> pd.Series:
-#             """
-#             Estimate the score of an impression.
-#             Args:
-#                 success (int):  Number of times KPI achieved
-#                 trials (int):  Number of time we bought the impression
-#             """
-
-#             a = 1 + success
-#             b = 1 + trials - success
-
-#             mean, var, skew, kurt = beta.stats(a, b, moments='mvsk')
-
-#             if rSample:
-#                 # Random beta sampling
-#                 score = np.random.beta(a,b)
-#             else: 
-#                 # Use mean
-#                 score = mean
-
-#             score = score /np.sqrt(var)
-#             score = score/score.max()        
-
-#             return pd.Series(score)
         
         @f.pandas_udf("double")
         def get_fp_scores(P: pd.Series, L1: pd.Series)-> pd.Series:
@@ -393,19 +386,19 @@ class adlogdata(adconfig):
                     print("-"*10,f'Scoring {krate}',"-"*10)
                 col1 = krate
                 col2 = denom[krate]
-                # if beta:
-                #     dfweighted = dfweighted.withColumn(f"score_{krate}", get_beta_scores(col1, col2, rSample=rSample))
-                # else:       
-                dfweighted = dfweighted.withColumn(f"score_{krate}", get_fp_scores(col1, col2))
+                if beta:
+                    res = scoringFunction(dfweighted[col1].to_numpy(),dfweighted[col2].to_numpy(), rSample=rSample)
+                else:       
+                    dfweighted = dfweighted.withColumn(f"score_{krate}", get_fp_scores(col1, col2))
                 
 
-#         if self.verbose>0:
-#             print("-"*10,f'Using Mean of all scores as final score',"-"*10)
+        if self.verbose>0:
+            print("-"*10,f'Using Mean of all scores as final score',"-"*10)
             
-#         score_cols = [col for col in dfweighted.columns if 'score_' in col]        
+        score_cols = [col for col in dfweighted.columns if 'score_' in col]        
    
-#         dfweighted = dfweighted.withColumn("score", (col(score_cols[0]) + col(score_cols[1])) /len(score_cols))
-        
+        # dfweighted = dfweighted.withColumn("score", (col(score_cols[0]) + col(score_cols[1])) /len(score_cols))
+         
         if clean:
             cols = [] 
             for c in kpiAggregation.keys():
