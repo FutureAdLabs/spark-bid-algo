@@ -5,9 +5,9 @@ from os import path
 
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from model.config import adconfig
-from model.score import adlogdata
-from components.transformers.parameters.score_parameters import *
+from spark_model.config import adconfig
+from spark_model.score import adlogdata
+from spark_components.transformers.parameters.score_parameters import *
 
 import pyspark.sql.functions as f
 from pyspark import keyword_only
@@ -21,6 +21,7 @@ class Score_T(
     MinGroupSize,
     Beta,
     KPI,
+    ScoringFeatures,
     RSample,
     KPIAggregation,
     FeatureAggregation,
@@ -29,7 +30,7 @@ class Score_T(
     Clean,
     ScoringFunction,
     MutualInformation
-):    
+):
     @keyword_only
     def __init__(
         self,
@@ -39,6 +40,7 @@ class Score_T(
         minGroupSize=None,
         beta=None,
         kpi=None,
+        scoringFeatures=None,
         rSample=None,
         kpiAggregation=None,
         featureAggregation=None,
@@ -52,7 +54,6 @@ class Score_T(
         super().__init__()
         kwargs = self._input_kwargs
         self.setParams(**kwargs)
-       
         
     @keyword_only
     def setParams(
@@ -63,6 +64,7 @@ class Score_T(
         minGroupSize=None,
         beta=None,
         kpi=None,
+        scoringFeatures=None,
         rSample=None,
         kpiAggregation=None,
         featureAggregation=None,
@@ -78,8 +80,8 @@ class Score_T(
     
     
     
-    def set_config(self):
-    
+    def config(self):
+
             params = self.getModelParams().copy()
             verbose= self.getVerbose()
             
@@ -89,23 +91,11 @@ class Score_T(
             
             return config
 
-    def typeTransform(self, df):
-        pivotDF = df.groupBy("type") \
-              .sum("KPI") \
-              .pivot("type") \
-              .sum("sum(KPI)")
-        
-        pivotDF.printSchema()
-        pivotDF.show(truncate=False)
-        
-        return pivotDF
-    
-
     def _transform(self, dataset):
         
         # Initialise config
-        config = self.set_config()
-        features = config.feature_names()
+        config = self.config()
+        # features = config.feature_names()
         
         # Get all parameters
         parameters=self.extractParamMap()
@@ -116,7 +106,3 @@ class Score_T(
                    
     
         return dfw
-
-if __name__ == '__main__':
-    c = Score_T()
-    c.transform()
