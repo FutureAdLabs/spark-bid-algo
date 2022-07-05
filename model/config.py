@@ -6,21 +6,6 @@ from datetime import datetime
 import numpy as np
 # from utils.mlutils import *
 from pyludio.adutils import *
-
-import findspark
-findspark.init() 
-
-# os.environ['PYSPARK_PYTHON'] = '/usr/bin/python3'
-# os.environ['PYSPARK_DRIVER_PYTHON'] = '/usr/bin/python3'
-
-# import pyspark
-from pyspark.sql.types import DoubleType
-from pyspark.sql import DataFrame
-from pyspark.sql import Row
-import pyspark.sql.functions as f
-from pyspark.sql.functions import sha2, concat_ws, udf, log
-from pyspark.sql.functions import lit,col,sum, avg, max, first, min
-
 from pyspark.sql.functions import lit
 
 class adconfig():
@@ -126,16 +111,12 @@ class adconfig():
             raise
 
         #"CamapignName"
-        # cols = data.pop("ColumnFilters")
-        # params["ColumnFilters"] = {item:data[item] for item in cols}
-        params["ColumnFilters"] = "AdvertiserId"
+        cols = data.pop("ColumnFilters")
+        params["ColumnFilters"] = {item:data[item] for item in cols}
         
         #get date rages
-        # d1 = data.pop("date_start")
-        # d2 = data.pop("date_end")
-        d1 = "2021-11-25"
-        d2 = "2021-11-28"
-        
+        d1 = data.pop("date_start")
+        d2 = data.pop("date_end")
         #
         day1a = datetime.strptime(d1, '%Y-%m-%d')
         day2a = datetime.strptime(d2, '%Y-%m-%d')
@@ -144,10 +125,10 @@ class adconfig():
         params['day2'] = day2a.date()
         
         #get other params
-        speedtemp = 6
+        speedtemp = data.pop("speed")
         params['speed'] = self.get_opspeed(speedtemp)
 
-        # params = dict(**params, **data)
+        params = dict(**params, **data)
         #for x in ['basecpmbid','mincpmbid','maxcpmbid']:
         #    params[x] = data[x]
         #
@@ -198,7 +179,7 @@ class adconfig():
                       'MediaCostInBucks','FeeFeatureCost',
                       'DataUsageTotalCost','TTDCostInUSD',
                       'PartnerCostInUSD','AdvertiserCurrency','AdvertiserCostInUSD',
-                      'Latitude','Longitude','TemperatureInCelsiusName']
+                      'Latitude','Longitude','TemperatureInCelsiusName', 'Cost']
        
 
         d = {}
@@ -234,19 +215,34 @@ class adconfig():
             print("-"*10,f'Getting training dimensions',"-"*10)
                 
         # model = kwargs.get('model',self.mlmodel)
+        df = kwargs.get('df',None)
         model = 'FP'
         use_mutualinf = kwargs.get('mutualInformation',False)
+        scoring_features = kwargs.get('scoringFeatures', None)
         
-        base_features=['Country', 'AdvertiserId', 'CampaignId', 'AdgroupId',
-                       'AdFormat', 'FoldPosition', 'RenderingContext', 'OS',
-                       'DeviceType', 'Browser', 'Site']
+        base_features=['Country', 'AdvertiserId', 'CampaignId','AdgroupId', 'AdFormat', 
+                       "FoldPosition",'RenderingContext', 'OS','DeviceType', 'Browser',
+                       'Site']
+        ColNames = []
+        # if for_aggregation:
+        print(F'SCORING FEATURES = {scoring_features}')
+        if scoring_features is not None:
+            if self.verbose>-1:
+                print("-"*10,f'Using custom features are',"-"*10)
+                print(scoring_features)
+            for dim in scoring_features:
+                if not dim in df.columns:
+                    print('*'*40)
+                    print(f'FEATURE {dim} NOT IN {df.columns}')
+                else:    
+                    ColNames.append(dim)
+
         
         # Using mutual information for the best training features
-        if use_mutualinf:
+        elif use_mutualinf:
             if self.verbose>-1:
                 print("-"*10,f'Using mutual information to generate best features',"-"*10)
                 
-            df=kwargs.get('df',None)
             ColNames=['AdFormat', 'Frequency', 'Site', 
                       'FoldPosition', 'UserHourOfWeek', 'Country', 
                       'Region', 'Metro', 'City',
@@ -294,11 +290,13 @@ class adconfig():
         # if 'ColNames' in self.kwargs.keys():    
         #     ColNames = list(self.kwargs.get('ColNames',ColNames))
     
-            
-        if self.verbose>0:
+        if not ColNames:
+            ColNames = base_features
+        
+        if self.verbose>1:
                     print("-"*10,f'Training dimensions to be used are',"-"*10)  
                     print(ColNames)
-                    
+        print(f'ColNames = {ColNames}')           
         return ColNames
 
     def training_targets(self,model=None,**kwargs):
@@ -314,14 +312,14 @@ class adconfig():
 
         if model.lower()=='fpcpe':
             #cols = ['target','AdvertiserCurrency']
-            cols = ['engagement','click','viewable','trackable',
-                    'video-start','video-end','AdvertiserCurrency', 'impression']
+            cols = ['engagement','click','viewable','trackable', 'video-start',
+                    'video-end','AdvertiserCurrency', 'impression', 'Cost']
 
         else:
-            cols = ['engagement','click','viewable','trackable',
-                    'video-start','video-end','converted','AdvertiserCurrency', 'impression']
+            cols = ['engagement','click','viewable','trackable', 'video-start',
+                    'video-end','converted','AdvertiserCurrency', 'impression', 'Cost']
             
-        if self.verbose>0:
+        if self.verbose>-1:
             print("-"*10,f'Target features to be used are',"-"*10)
             print(cols)
             
@@ -339,7 +337,7 @@ class adconfig():
 
         cols = ['target','engagement','click','video-end',
                 'viewability','converted','AdvertiserCurrency', 
-                'impression']
+                'impression', 'Cost']
 
         if self.verbose>0:
             print("-"*10,f'Target features to be used are',"-"*10)
@@ -366,6 +364,7 @@ class adconfig():
         
                 
         training_features = self.training_dimensions(**kwargs)
+        print(f'TRAINING FEATURES AFTER TRAINING DIM ==> {training_features}')
 
         if kwargs.get('beta',False):
             training_targets = self.training_targets_beta(**kwargs)
@@ -375,9 +374,11 @@ class adconfig():
         # Training features + Training targets
         training_features.extend(training_targets)
         
-        if self.verbose>0:
+        if self.verbose>-1:
                     print("-"*10,f'Training + Target features to be used are',"-"*10)  
                     print(training_features)
+                    
+        print(f'TRAINING FEATURES AFTER TARGET ADDED ==> {training_features}')
                     
         return training_features
 
@@ -452,6 +453,10 @@ class adconfig():
         for n in train_target:
             if n in df.columns:
                 features.append(n)
+        
+        # print('----'*20)
+        # print(train_target)
+        # print(features)
 
         # Select the desired features
         if self.verbose>-1:
@@ -465,11 +470,11 @@ class adconfig():
         # Warn incase we need to drop larger number of rows because of NaN
         # df = df.replace(r'^\s*$', np.NaN)
         dfclean = df.dropna(how='any')
-        if self.verbose>2:
-            if df.count()>dfclean.count():
-                print("-"*10,f'WARNNING: Dropping missing rows with any missing values',"-"*10)
-                print('DataFrame rows before dropna: ',df.count())
-                print('DataFrame rows after dropna: ',dfclean.count())
+        if self.verbose>-1:
+            # if df.count()>dfclean.count():
+            print("-"*10,f'WARNNING: Dropping missing rows with any missing values',"-"*10)
+                # print('DataFrame rows before dropna: ',df.count())
+                # print('DataFrame rows after dropna: ',dfclean.count())
 
         # Now set data types
         # df = dfclean.astype(dtype_dict)
@@ -480,7 +485,7 @@ class adconfig():
             pfrac = kwargs.get('pfrac',0.1)        
             pfrac = float(pfrac)
 
-            if self.verbose>2:
+            if self.verbose>-1:
                 print("-"*10,f'CHecking for class imbalance',"-"*10)
                 print(f'the fraction of positive targets is: {pfrac};  df.shape=',df.count())
                 
@@ -516,5 +521,3 @@ class adconfig():
          'verbose':self.verbose}
 
         return jdict
-
-    
